@@ -17,13 +17,7 @@ const mutableStdout = new Writable({
   }
 });
 
-mutableStdout.muted = false;
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: mutableStdout,
-  terminal: true
-});
+const rl = readline.createInterface({ input: process.stdin, output: mutableStdout, terminal: true });
 
 const dataFile = 'users.json';
 
@@ -50,7 +44,6 @@ function questionPassword(query) {
 
     rl.question(query, (answer) => {
       mutableStdout.muted = false;
-      console.log();
       resolve(answer);
     });
     mutableStdout.muted = true;
@@ -70,10 +63,10 @@ async function login() {
     user.status = 'online';
     user.lastLogin = new Date().toISOString();
     await saveUser(users);
-    console.log(chalk.green('Login successfull!'));
+    console.log(chalk.green('\nLogin successfull!'));
     console.log(chalk.cyan(`Welcome back, ${username}!`));
   } else {
-    console.log(chalk.red('Invalid username or password'));
+    console.log(chalk.red('\nInvalid username or password'));
   }
 }
 
@@ -85,17 +78,18 @@ async function register() {
 
   const users = await loadUser();
   if (users.some(u => u.username === username)) {
-    console.log(chalk.red('Username already exists.'));
-  } else {
-    users.push({
-      username,
-      password,
-      status: 'offline',
-      lastLogin: null
-    });
-    await saveUser(users);
-    console.log(chalk.green('Registration successfull!'));
-  }
+    console.log(chalk.red('\nUsername already exists.'));
+    return;
+  } 
+
+  users.push({
+    username,
+    password,
+    status: 'offline',
+    lastLogin: null
+  });
+  await saveUser(users);
+  console.log(chalk.green('\nRegistration successfull!'));
 }
 
 async function logout() {
@@ -136,18 +130,13 @@ async function changePassword() {
   const users = await loadUser();
   const user = users.findIndex(u => u.username === username);
 
-  if (user === -1) {
-    console.log(chalk.red('User not found!'));
-    return;
+
+  if (user === -1 || users[user].status === 'offline') {
+    console.log(chalk.red('User does not exist or not logged in.'));
   }
 
-  if (users[user].status === 'offline') {
-    console.log(chalk.red('You are not logged in!'));
-    return;
-  } 
-
   const newPassword = await questionPassword(chalk.yellow('Enter new password: '));
-  let verifyPassword = await questionPassword(chalk.yellow('Please type your new password: '));
+  let verifyPassword = await questionPassword(chalk.yellow('Please retype your new password: '));
 
   while (newPassword !== verifyPassword) {
     const tryAgain = await questionPassword(chalk.yellow('Password does not match!, please type again: '));
@@ -156,7 +145,7 @@ async function changePassword() {
 
   users[user].password = newPassword;
   await saveUser(users);
-  console.log(chalk.green(`${username}, your password has been changed!`));
+  console.log(chalk.green(`\n${username}, your password has been changed!`));
 }
 
 async function main() {

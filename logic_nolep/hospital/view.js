@@ -1,6 +1,37 @@
 class HospitalView {
-    static registerView(objArr) {
-        console.log(`save data success {"username":${objArr[0].username},"password":${objArr[0].password},"role":${objArr[0].position}. Total employee : ${objArr[1]}`)
+    static registerView(employeeData) {
+        console.log(`Sukses menyimpan data baru: { username: ${employeeData[0].username}, password: ${employeeData[0].password}, posititon: ${employeeData[0].position} }`);
+        console.log(`Total karyawan: ${employeeData[1]}`);
+    }
+
+    static loginView(username) {
+        console.log(`${username} berhasil login.`);
+    }
+
+    static addPatientView(patient) {
+        console.log('Pasien baru telah terdaftar:');
+        console.log(patient);
+    }
+
+    static logoutView(name) {
+        console.log(`${name} telah logout.`);
+    }
+
+    static deleteView(id) {
+        console.log(`Pasien dengan id ${id} berhasil dihapus.`);
+    }
+
+    static updateView(patient) {
+        console.log('Data pasien berhasil diubah:');
+        console.log(patient)
+    }
+
+    static showView(data) {
+        for (const d of data) console.log(d);
+    }
+
+    static findPatientByView(data) {
+        console.log(data);
     }
 
     static errorView(err) {

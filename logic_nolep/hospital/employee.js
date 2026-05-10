@@ -1,5 +1,4 @@
-const { log } = require("console");
-let fs = require("fs");
+const fs = require("fs");
 
 class Employee {
   constructor(username, password, position) {
@@ -10,61 +9,98 @@ class Employee {
   }
 
   static register(name, password, role, callback) {
-    this.findAll((err, data) => {
-      if (err) {
-        console.log('Tidak ada file json, membuat file json...');
-        fs.writeFile("./employee.json", JSON.stringify([], null, 2), (err) => {
-          if (!err) {
-            console.log('berhasil membuat file json');
-            this.register(name, password, role, callback);
-          }
-        });
-      } else {
-        let obj = new Employee(name, password, role);
-        let newData = data;
-        newData.push(obj);
+    this.findAllEmployee((err, data) => {
+      if (err) return callback(err);
 
-        let objArr = [obj, newData.length];
+      const isUsnExist = data.some(e => e.username === name);
+      if (isUsnExist) return callback('Username tidak tersedia, silakan pilih yang lain.');
 
-        fs.writeFile("./employee.json", JSON.stringify(newData, null, 2), (err) => {
-          if (err) {
-            console.log(err);
-          } else {
-            callback(err, objArr);
-          }
-        });
-      }
+      const newEmployee = new Employee(name, password, role);
+      data.push(newEmployee);
+
+      const employeeData = [newEmployee, data.length];
+
+      fs.writeFile('./employee.json', JSON.stringify(data, null, 2), (err) => {
+        if (err) {
+          callback('Gagal menambahkan data employee.');
+        } else {
+          callback(err, employeeData);
+        }
+      }); 
     });
   }
 
-  static login(username, password, callback) {
-    this.findAll((err, data) => {
-      if (err) {
-        console.log(err);
-      } else {
-        const isAnyoneLoggedIn = data.findIndex(u => u.login === true);
-        if (isAnyoneLoggedIn) {
-          return callback(`${data.username} sedang login, Anda harus menunggunya logout`);
-        }
+  static show(toShow, callback) {
+    const show =  toShow === 'patient' ? './patient.json' : toShow === 'employee' ? './employee.json' : false;
+    if (!show) return callback('Input tidak valid');
 
-        const userIndex = data.findIndex(u => u.username === username && u.password === password);
-        data[userIndex].login = true;
+    this.findAllEmployee((err, data) => {
+      if (err) return callback(err);
 
-        fs.writeFile('./employee.json', JSON.stringify(data, null, 2), (err) => {
-          if (err) {
-            console.log(err);
-          } else {
-            callback(err, data[userIndex].username);
-          }
-        });
+      const emIndex = data.findIndex(u => u.login === true);
+
+      if (emIndex === -1) return callback('Tidak ada yang login.');
+
+      if (show === './employee.json') {
+        if (data[emIndex].position !== 'admin'){
+          return callback('Anda bukan admin, tidak bisa melakukan proses ini');
+        } 
       }
+
+      fs.readFile(show, 'utf-8', (err, data) => {
+        if (err) {
+          callback('Gagal membaca data.');
+        } else {
+          callback(err, JSON.parse(data));
+        }
+      });
+    });
+  } 
+
+  static login(username, password, callback) {
+    this.findAllEmployee((err, data) => {
+      if (err) return callback(err);
+
+      const isAnyoneLoggedIn = data.some(u => u.login === true);
+      if (isAnyoneLoggedIn) return callback('Tidak bisa login bersamaan!');
+
+      const empIndex = data.findIndex(u => u.username === username && u.password === password);
+      data[empIndex].login = true;
+
+      fs.writeFile('./employee.json', JSON.stringify(data, null, 2), (err) => {
+        if (err) {
+          callback(err);
+        } else {
+          callback(err, data[empIndex].username);
+        }
+      });
+    });
+  }
+
+  static logout(callback) {
+    this.findAllEmployee((err, data) => {
+      if (err) return callback(err);
+
+      const empIndex = data.findIndex(u => u.login === true);
+      if (empIndex === -1) return callback('Tidak ada yang login.');
+
+      data[empIndex].login = false;
+      
+      fs.writeFile('./employee.json', JSON.stringify(data, null, 2), (err) => {
+        if (err) {
+          callback(err);
+        } else {
+          callback(err, data[empIndex].username);
+        }
+          
+      });
     });
   }
  
-  static findAll(callback) {
+  static findAllEmployee(callback) {
     fs.readFile("./employee.json", "utf-8", (err, data) => {
       if (err) {
-        callback(err);
+        callback('Tidak dapat membaca file employee.json');
       } else {
         callback(err, JSON.parse(data));
       }

@@ -35,7 +35,7 @@ switch (command) {
         break;
 
     case "show":
-        HospitalController.show(argument);
+        HospitalController.show(argument[0]);
         break;
 
     case "addPatient":
@@ -51,7 +51,7 @@ switch (command) {
         break;
 
     case "findPatientBy:":
-        HospitalController.findPatientBy(argument);
+        HospitalController.findPatientBy(argument[0]);
         break;
 
     default:

@@ -1,6 +1,21 @@
 import readline from 'readline';
 import fs from 'fs/promises';
 import chalk from 'chalk';
+import { Writable } from 'stream';
+
+const mutableStdout = new Writable({
+  write: function(chunk, encoding, callback) {
+    if (!this.muted) {
+      process.stdout.write(chunk, encoding);
+    } else {
+      const char = chunk.toString();
+      if (char !== '\n' && char !== '\r' && char !== '\r\n') {
+        process.stdout.write('*');
+      }
+    }
+    callback();
+  }
+});
 
 let users = [];
 let currentUser = null;
@@ -20,47 +35,49 @@ async function ask(query) {
   });
 }
 
+async function askPassword(query) {
+    return new Promise((resolve) => {
+        rl.question(query, (answer) => {
+            resolve(answer);
+            console.log();
+            mutableStdout.muted = false;
+        });
+        mutableStdout.muted = true;
+    });
+}
+
 async function saveUsers() {
   await fs.writeFile('./users.json', JSON.stringify(users, null, 2));
 }
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: mutableStdout,
+  terminal: true
 });
 
-function startMenu() {
-  console.log(chalk.blue.bold('--- Guessing Game ---'));
-  console.log(chalk.yellow('1. Login'));
-  console.log(chalk.yellow('2. Register'));
-  console.log(chalk.yellow('3. Keluar'));
+async function startMenu() {
+  while(true) {
+    console.log(chalk.blue.bold('--- Guessing Game ---'));
+    console.log(chalk.yellow('1. Login'));
+    console.log(chalk.yellow('2. Register'));
+    console.log(chalk.yellow('3. Keluar'));
 
-  rl.question(chalk.magenta('Pilih opsi: '), (choice) => {
+    const choice = await ask(chalk.magenta('Pilih opsi: '));
+
     switch(choice) {
-      case '1': login(); 
-        break;
-      case '2': register(); 
-        break;
-      case '3': 
-        console.log(chalk.green('Goodbye!'));
-        rl.close();
-        break;
-      default: 
-        console.log(chalk.red('Invalid choice. Please try again.'));
-        rl.question(chalk.magenta('Apakah kamu ingin mencoba lagi? (Y/n): '), (answer) => {
-          const jawaban = answer.trim().toLowerCase();
-          if (jawaban === 'y' || jawaban === '') {
-            startMenu();
-          } else if (jawaban === 'n') {
-              console.log(chalk.green('Baiklah, program dihentikan, Goodbye!'));
-              rl.close();
-          } else {
-              console.log(chalk.red('Input tidak dikenali. Mengembalikan ke menu utama...'));
-              setTimeout(() => startMenu(), 1500);
-          }
-        });
+        case '1': await login(); 
+            break;
+        case '2': await register(); 
+            break;
+        case '3': 
+            console.log(chalk.green('Goodbye!'));
+            rl.close();
+            return;
+        default: 
+            console.log(chalk.red('Invalid choice. Please try again.'));
     }
-  });
+  }
 }
 
 async function register() {
@@ -68,11 +85,11 @@ async function register() {
   console.log(chalk.blue.bold('--- Register ---'));
 
   const username = await ask(chalk.yellow('Choose a Username: '));
-  const password = await ask(chalk.yellow('Choose a Password: '));
+  const password = await askPassword(chalk.yellow('Choose a Password: '));
 
   if (users.find(u => u.username === username)) {
     console.log(chalk.red('Username already exist'));
-    return startMenu();
+    return;
   }
 
   users.push({
@@ -82,7 +99,6 @@ async function register() {
   });
   await saveUsers();
   console.log(chalk.green(`Selamat! ${username} telah terdaftar!`));
-  return startMenu();
 }
 
 async function login() {
@@ -90,15 +106,14 @@ async function login() {
   console.log(chalk.blue.bold('--- Login ---'));
 
   const username = await ask(chalk.yellow('Username: '));
-  const password = await ask(chalk.yellow('Password: '));
+  const password = await askPassword(chalk.yellow('Password: '));
 
   if (users.find(u => u.username === username && u.password === password)) {
     console.log(chalk.green(`Login berhasil!, halo ${username} siap bermain!`));
     currentUser = username;
-    return mainMenu();
+    await mainMenu();
   } else {
     console.log(chalk.red('Invalid username or password!'));
-    return startMenu();
   }
 }
 
@@ -110,15 +125,14 @@ async function mainMenu() {
 
   const choice = await ask(chalk.yellow('Pilih opsi: '));
   switch(choice) {
-    case '1': playGame();
+    case '1': await playGame();
       break;
-    case '2': showLeaderboard();
+    case '2': await showLeaderboard();
       break;
-    case '3': startMenu();
+    case '3': await startMenu();
       break;
     default:
       console.log(chalk.red('Invalid choice!'));
-      return startMenu();
   }
 }
 
@@ -143,18 +157,17 @@ async function playGame() {
     } else if (konversiJawaban > randomNumber) {
       console.log(chalk.yellow('Terlalu tinggi!'));
     } else {
-      console.log(chalk.green(`Selamat!, Anda menebak dengan benar dalam ${attemp} percobaan!`));
+      console.log(chalk.green(`Selamat!, Anda menebak dengan benar dalam ${attemp}x percobaan!`));
       break;
     }
   }
 
-  const index = users.findIndex(u => u.username === currentUser);
-  if (!users[index].highestScore || users[index].highestScore > attemp) {
-    users[index].highestScore = attemp;
-    await saveUsers();
-    console.log(chalk.green('Ini adalah skor tertinggi baru Anda!'));
-  } 
-  startMenu();
+  const userIndex = users.findIndex(u => u.username === currentUser);
+    if (!users[userIndex].highestScore || users[userIndex].highestScore > attemp) {
+      users[userIndex].highestScore = attemp;
+      await saveUsers();
+      console.log(chalk.green('Ini adalah skor tertinggi baru Anda!'));
+    }
 }
 
 async function showLeaderboard() {
@@ -162,12 +175,15 @@ async function showLeaderboard() {
   console.log(chalk.blue.bold('--- Papan Skor (Top 10) ---'));
 
   const usersPlayAndSort = users.filter(u => u.highestScore !== null).sort((a, b) => a.highestScore - b.highestScore);
+  if (usersPlayAndSort.length === 0) {
+    console.log(chalk.red('Belum ada player yang memainkan game.'));
+    return;
+  }
   
   for (let i = 0; i < usersPlayAndSort.length; i++) {
     if (i === 9) break;
     console.log(chalk.white(`${i + 1}. ${usersPlayAndSort[i].username}: ${usersPlayAndSort[i].highestScore} percobaan`));
   }
-  startMenu();
 }
 
 async function main() {
