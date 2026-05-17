@@ -46,8 +46,8 @@ class HospitalView {
         console.log('==========================');
         console.log('node index.js register <username> <password> <jabatan>');
         console.log('node index.js login <username> <password>');
-        console.log('node index.js addPatient <namaPasien> <penyakit1> <penyakit2> ....');
-        console.log('node index.js updatePatient <namaPasien> <penyakit1> <penyakit2> ....');
+        console.log('node index.js addPatient <id> <namaPasien> <penyakit1> <penyakit2> ....');
+        console.log('node index.js updatePatient <id> <namaPasien> <penyakit1> <penyakit2> ....');
         console.log('node index.js deletePatient <id>');
         console.log('node index.js logout');
         console.log('node index.js show <employee/patient>');
